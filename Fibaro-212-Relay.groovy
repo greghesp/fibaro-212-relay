@@ -1,0 +1,170 @@
+/**
+ *  Copyright 2015 SmartThings
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+metadata {
+
+	definition (name: "Fibaro FGS-212 Relay", namespace: "smartthings", author: "hespg") {
+		capability "Actuator"
+		capability "Switch"
+		capability "Polling"
+		capability "Refresh"
+		capability "Sensor"
+		capability "Relay Switch"
+        capability "Configuration"
+
+        command 'switchToMomentary'
+        command 'switchToToggle'
+
+        attribute "switchType", "string"
+
+		fingerprint deviceId: "0x1001", inClusters: "0x20,0x25,0x27,0x72,0x86,0x70,0x85"
+		fingerprint deviceId: "0x1003", inClusters: "0x25,0x2B,0x2C,0x27,0x75,0x73,0x70,0x86,0x72"
+	}
+
+	// simulator metadata
+	simulator {
+		status "on":  "command: 2003, payload: FF"
+		status "off": "command: 2003, payload: 00"
+
+		// reply messages
+		reply "2001FF,delay 100,2502": "command: 2503, payload: FF"
+		reply "200100,delay 100,2502": "command: 2503, payload: 00"
+	}
+
+	// tile definitions
+	tiles {
+		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+			state "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
+			state "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+		}
+		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
+			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
+		}
+        standardTile("switchTypeTile", "switchType", width: 1, height: 1, decoration: 'flat') {
+        	state "momentary", label: "Push", action: "switchToToggle", icon:"st.Entertainment.entertainment15", backgroundColor:"#00a0dc"
+            state "toggle", label: "Toggle", action: "switchToMomentary", icon:"https://image.flaticon.com/icons/svg/149/149964.svg", backgroundColor:"#ffffff"
+        }
+		main "switch"
+		details(["switch","reset","switchTypeTile","refresh"])
+	}
+}
+
+def installed() {
+	zwave.manufacturerSpecificV1.manufacturerSpecificGet().format()
+}
+
+def parse(String description) {
+	//Runs when device sends update
+	def result = null
+	def cmd = zwave.parse(description, [0x20: 1, 0x70: 1])
+	if (cmd) {
+		result = createEvent(zwaveEvent(cmd))
+	}
+	if (result?.name == 'hail' && hubFirmwareLessThan("000.011.00602")) {
+		result = [result, response(zwave.basicV1.basicGet())]
+		log.debug "Was hailed: requesting state update"
+	} else {
+		log.debug "Parse returned ${cmd}"
+	}
+	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	log.debug('Basic Report');
+    log.debug(cmd)
+	[name: "switch", value: cmd.value ? "on" : "off", type: "physical"]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
+    // This runs when SmartThings makes a change
+	log.debug('Binary report');
+    log.debug(cmd);
+	[name: "switch", value: cmd.value ? "on" : "off", type: "digital"]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
+	log.debug('Config Report');
+    log.debug(cmd);
+	def value = "when off"
+    if (cmd.configurationValue[0] == 0) {
+    	log.debug('Device is set to Momentary')
+        sendEvent(name: "switchType", value: "momentary")
+        }
+	if (cmd.configurationValue[0] == 1) {
+   	 	value = "when on"
+    	log.debug('Device is set to Toggle')
+        sendEvent(name: "switchType", value: "toggle")
+        }
+	if (cmd.configurationValue[0] == 2) {value = "never"}
+    log.debug "${switchType}"
+	[name: "indicatorStatus", value: value, display: false]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.hailv1.Hail cmd) {
+	log.debug('Hail');
+    log.debug(cmd);
+	[name: "hail", value: "hail", descriptionText: "Switch button was pressed", displayed: false]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
+	log.debug('Manufacturer Report');
+    log.debug(cmd)
+   }
+
+def zwaveEvent(physicalgraph.zwave.Command cmd) {
+	// Handles all Z-Wave commands we aren't interested in
+    //log.debug(cmd)
+	[:]
+}
+
+def on() {
+	delayBetween([
+		zwave.basicV1.basicSet(value: 0xFF).format(),
+		zwave.switchBinaryV1.switchBinaryGet().format()
+	])
+}
+
+def off() {
+	delayBetween([
+		zwave.basicV1.basicSet(value: 0x00).format(),
+		zwave.switchBinaryV1.switchBinaryGet().format()
+	])
+}
+
+def poll() {
+	zwave.switchBinaryV1.switchBinaryGet().format()
+}
+
+def refresh() {
+	delayBetween([
+		zwave.switchBinaryV1.switchBinaryGet().format(),
+		zwave.manufacturerSpecificV1.manufacturerSpecificGet().format(),
+        zwave.manufacturerSpecificV2.manufacturerSpecificGet().format(),
+	])
+}
+
+def switchToMomentary() {
+		log.debug "Changing Switch Type to Momentary"
+        delayBetween([
+			zwave.configurationV1.configurationSet(configurationValue: [0], parameterNumber: 14, size: 1, ).format(),
+            zwave.configurationV1.configurationGet(parameterNumber: 14).format()
+        ], 500)
+}
+
+def switchToToggle() {
+		log.debug "Changing Switch Type to Toggle"
+        delayBetween([
+			zwave.configurationV1.configurationSet(configurationValue: [1], parameterNumber: 14, size: 1, ).format(),
+            zwave.configurationV1.configurationGet(parameterNumber: 14).format()
+        ], 500)
+}
