@@ -24,8 +24,12 @@ metadata {
 
         command 'switchToMomentary'
         command 'switchToToggle'
+        command 'enableRollerShutter'
+        command 'disableRollerShutter'
 
         attribute "switchType", "string"
+        attribute "rollerShutter", "string"
+
 
 		fingerprint deviceId: "0x1001", inClusters: "0x20,0x25,0x27,0x72,0x86,0x70,0x85"
 		fingerprint deviceId: "0x1003", inClusters: "0x25,0x2B,0x2C,0x27,0x75,0x73,0x70,0x86,0x72"
@@ -42,20 +46,24 @@ metadata {
 	}
 
 	// tile definitions
-	tiles {
-		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-			state "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
+	tiles(scale:2) {
+		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true, decoration: "flat") {
+			state "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#16a085"
 			state "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 		}
 		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
-        standardTile("switchTypeTile", "switchType", width: 1, height: 1, decoration: 'flat') {
-        	state "momentary", label: "Push", action: "switchToToggle", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Minimize%20Window%20Filled-50.png", backgroundColor:"#00a0dc"
-            state "toggle", label: "Toggle", action: "switchToMomentary", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Switch%20On%20Filled-50.png", backgroundColor:"#ffffff"
+        standardTile("switchTypeTile", "switchType", width: 2, height: 2, decoration: 'flat') {
+        	state "momentary", label: "Push", action: "switchToToggle", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Minimize%20Window%20Filled-50.png"
+            state "toggle", label: "Toggle", action: "switchToMomentary", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Switch%20On%20Filled-50.png"
+        }
+        standardTile("rollerShutterTile", "rollerShutter", width: 2, height: 2, decoration: 'flat') {
+        	state "Disable", label: "Disabled", action: "enableRollerShutter", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Minimize%20Window%20Filled-50.png"
+            state "Enable", label: "Enabled", action: "disableRollerShutter", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Switch%20On%20Filled-50.png"
         }
 		main "switch"
-		details(["switch","reset","switchTypeTile","refresh"])
+		details(["switch","reset","switchTypeTile","rollerShutterTile","refresh"])
 	}
 }
 
@@ -167,4 +175,12 @@ def switchToToggle() {
 			zwave.configurationV1.configurationSet(configurationValue: [1], parameterNumber: 14, size: 1, ).format(),
             zwave.configurationV1.configurationGet(parameterNumber: 14).format()
         ], 500)
+}
+
+def enableRollerShutter() {
+		log.debug "Shutter function was enabled"
+}
+
+def disableRollerShutter() {
+		log.debug "Shutter function was disabled"
 }
