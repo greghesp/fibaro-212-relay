@@ -51,8 +51,8 @@ metadata {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
         standardTile("switchTypeTile", "switchType", width: 1, height: 1, decoration: 'flat') {
-        	state "momentary", label: "Push", action: "switchToToggle", icon:"st.Entertainment.entertainment15", backgroundColor:"#00a0dc"
-            state "toggle", label: "Toggle", action: "switchToMomentary", icon:"https://image.flaticon.com/icons/svg/149/149964.svg", backgroundColor:"#ffffff"
+        	state "momentary", label: "Push", action: "switchToToggle", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Minimize%20Window%20Filled-50.png", backgroundColor:"#00a0dc"
+            state "toggle", label: "Toggle", action: "switchToMomentary", icon:"https://cdn.rawgit.com/greghesp/fibaro-212-relay/896dc359/icons/Switch%20On%20Filled-50.png", backgroundColor:"#ffffff"
         }
 		main "switch"
 		details(["switch","reset","switchTypeTile","refresh"])
